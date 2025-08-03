@@ -1,0 +1,19 @@
+{
+    "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.generator": "Ninja",
+    "cmake.parallelJobs": 4,
+    
+    "cmake.configureSettings": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_SHARED_LIBS": "ON"
+    },
+    
+    "cmake.buildBeforeRun": true,
+    "debug.allowBreakpointsEverywhere": true,
+    
+    "files.exclude": {
+        "**/build": true,
+        "**/.cache": true
+    }
+}

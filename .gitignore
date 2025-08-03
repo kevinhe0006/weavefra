@@ -57,4 +57,4 @@ CMakeUserPresets.json
 #build file
 build/
 bin/
-.vscode/tasks.json
+.vscode/

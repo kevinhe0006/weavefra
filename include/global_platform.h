@@ -12,9 +12,7 @@
 // 调试模式检测
 #ifdef _DEBUG
     #define DEBUG_MODE 1
-    #define DEBUG_LOG(msg) std::cerr << "[DEBUG] " << msg << std::endl
 #else
     #define DEBUG_MODE 0
-    #define DEBUG_LOG(msg)
 #endif
 

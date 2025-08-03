@@ -10,3 +10,10 @@
 #else
     #define WF_API
 #endif
+
+#ifndef WF_Defined_ShouldEnd
+#define WF_Defined_ShouldEnd
+
+inline bool ShouldEnd = false;
+
+#endif

@@ -1,10 +1,6 @@
 project(weavefra-lib VERSION 1.0.0)
 
-include_directories(${PROJECT_NAME} PUBLIC 
-${CMAKE_CURRENT_SOURCE_DIR}/weavefra-lib/src
-)
-
-file(GLOB_RECURSE LIB_SOURCES "src/*.cpp" "src/*.c" "scr/*.h" "src/*.hpp")
+file(GLOB_RECURSE LIB_SOURCES "src/*.cpp" "src/*.c" "src/*.h" "src/*.hpp")
 
 add_library(${PROJECT_NAME} ${LIB_SOURCES})
 
@@ -12,7 +8,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
-
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE _BUILDING_DLL)

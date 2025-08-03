@@ -1,7 +1,7 @@
 #include <iostream>
 #include "weavefra.h"
 
-class sandbox : public weavefra::windowslib
+class sandbox : public weavefra::Application
 {
 public:
     sandbox()

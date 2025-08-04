@@ -1,8 +1,11 @@
 project(weavefra-lib VERSION 1.0.0)
 
 file(GLOB_RECURSE LIB_SOURCES "src/*.cpp" "src/*.c" "src/*.h" "src/*.hpp")
-
 add_library(${PROJECT_NAME} ${LIB_SOURCES})
+
+target_precompile_headers(${PROJECT_NAME} PUBLIC
+    src/WFpch.h
+)
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

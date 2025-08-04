@@ -78,7 +78,10 @@
         "string_view": "cpp",
         "text_encoding": "cpp",
         "ranges": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "any": "cpp",
+        "sstream": "cpp",
+        "unordered_set": "cpp"
     },
     
 }

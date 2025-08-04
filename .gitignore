@@ -57,4 +57,7 @@ CMakeUserPresets.json
 #build file
 build/
 bin/
-.vscode/
+
+#VScode file
+.vscode
+.vscode/c_cpp_properties.json

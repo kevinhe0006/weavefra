@@ -1,22 +1,10 @@
-#include <iostream>
 #include "weavefra.h"
+#include "ApplicationSandbox.h"
 
-class sandbox : public weavefra::Application
-{
-public:
-    sandbox()
-    {
-
-    }
-    ~sandbox()
-    {
-
-    }
-};
 
 int main()
 {
-    sandbox m_sandbox;
-    m_sandbox.Run();
+    Sandbox::sandboxApplication* m_sandbox = new Sandbox::sandboxApplication;
+    m_sandbox->Run();
     return 0;
 }

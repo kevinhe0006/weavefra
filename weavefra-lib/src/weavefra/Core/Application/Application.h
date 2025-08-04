@@ -1,11 +1,14 @@
-#include "weavefra/Core/CoreDefined.h"
 #pragma once
+
+#include "WFpch.h"
+
+#include "weavefra/Core/CoreDefined.h"
 
 namespace weavefra
 {
     class WF_API Application
     {
     public:
-        void Run();
+        virtual void Run();
     };
 }

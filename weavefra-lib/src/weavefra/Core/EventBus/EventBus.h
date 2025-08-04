@@ -1,13 +1,8 @@
-#include <string>
-#include <functional>
-#include <vector>
-#include <unordered_map>
-#include <typeindex>
-#include <iostream>
-#include <any>
-#include "weavefra/Core/CoreDefined.h"
 #pragma once
 
+#include "WFpch.h"
+
+#include "weavefra/Core/CoreDefined.h"
 
 namespace weavefra
 {
@@ -17,6 +12,7 @@ namespace weavefra
         virtual ~Event() = default;
     };
 
+    
     class WF_API EventBus
     {
     private:
@@ -29,4 +25,37 @@ namespace weavefra
         template<typename EventT>
         void emit(EventT);
     };
+    
+    
+    template <typename EventT>
+    void EventBus::subscribe(handler<EventT> h)
+    {
+        auto wrapper = [=](const Event& base){
+            #ifndef LIB_DEBUG
+            assert(typeid(base) == typeid(EventT));
+            #endif
+            const auto& result = static_cast<const EventT&>(base);
+            h(result);
+        };
+        listeners[typeid(EventT)] = { wrapper };
+        std::cout<< "subscribe to " << typeid(EventT).name() << "\n";
+    }
+    template <typename EventT>
+    void EventBus::emit(EventT e)
+    {
+        auto it = listeners.find(typeid(EventT));
+        std::cout<< "emitting " << typeid(EventT).name() << "\n";
+        if(it != listeners.end())
+        {
+            for(auto fn : it->second)
+            {
+                fn(e);
+            }
+        }
+    }
+    
+    #ifndef _Create_Main_EventBus
+        #define _Create_Main_EventBus
+        inline EventBus Main_EventBus;
+    #endif
 }

@@ -1,11 +1,14 @@
 project(weavefra-sandbox LANGUAGES CXX)
 
-add_executable(${PROJECT_NAME} src/main.cpp)
+file(GLOB_RECURSE APP_RECURSE "src/*.cpp" "src/*.hpp" "src/*.h" "src/*.c")
+
+add_executable(${PROJECT_NAME} ${APP_RECURSE})
 
 target_include_directories(${PROJECT_NAME}
 PUBLIC
 ${Weavefra_Lib_Dir}
-${CMAKE_CURRENT_SOURCE_DIR}/weavefra-sandbox/src
+$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
 
 target_link_libraries(${PROJECT_NAME}

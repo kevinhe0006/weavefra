@@ -3,5 +3,5 @@
 
 namespace weavefra
 {
-    
+    std::atomic<uint64_t> EventBus::NextHandlerID{1};
 }

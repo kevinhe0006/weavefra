@@ -1,4 +1,4 @@
-project(weavefra-sandbox LANGUAGES CXX)
+project(weavefra-previewer LANGUAGES CXX)
 
 file(GLOB_RECURSE APP_RECURSE "src/*.cpp" "src/*.hpp" "src/*.h" "src/*.c")
 

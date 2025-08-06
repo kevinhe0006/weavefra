@@ -60,4 +60,12 @@ bin/
 
 #VScode file
 .vscode
+.vscode/
+.vscode/settings.json
 .vscode/c_cpp_properties.json
+.vscode/tasks.json
+.vscode/launch.json
+launch.json
+tasks.json
+c_cpp_properties.json
+settings.json

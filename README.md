@@ -1,2 +1,2 @@
 # weavefra
-Simple C++ interface library
+Simple C++ library

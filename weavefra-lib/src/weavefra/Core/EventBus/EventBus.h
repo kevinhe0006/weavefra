@@ -4,13 +4,13 @@
 
 #include "weavefra/Core/CoreDefined.h"
 #include "weavefra/Core/logger.h"
+#include "weavefra/Core/Asserts.h"
 
 namespace weavefra
 {
 
     struct WF_API Event
     {
-        virtual ~Event() = default;
     };
 
     template<typename EventT>
@@ -23,12 +23,11 @@ namespace weavefra
         {
             EventCallbackFn<Event> handle;
             const uint64_t ID;
-            handler(EventCallbackFn<Event> Handle,uint64_t id) : ID(id), handle(Handle){}
+            handler(EventCallbackFn<Event> Handle,uint64_t id) : handle(Handle), ID(id){}
             handler operator&=(const handler& other) = delete;
         };
         static std::atomic<uint64_t> NextHandlerID;
         
-
         std::unordered_map<std::type_index, std::vector<handler>> listeners;
     public:
         template<typename EventT>
@@ -45,7 +44,7 @@ namespace weavefra
     {
         auto wrapper = [h = std::move(h)](const Event& base){
             #ifdef LIB_DEBUG
-            assert(typeid(base) == typeid(EventT));
+            WF_ASSERT(typeid(base) == typeid(EventT), "this is not a Event type");
             #endif
             const auto& result = static_cast<const EventT&>(base);
             h(result);

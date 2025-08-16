@@ -4,8 +4,6 @@
 
 #include "CoreDefined.h"
 
-namespace weavefra
-{
     #ifndef WF_LOGGER
         #define WF_LOGGER
 
@@ -28,7 +26,7 @@ namespace weavefra
         std::uint8_t Initialize_logging();
         void ShoutDown_logging();
 
-        WF_API void LogReporter(log_level level, const char* message, ...);
+        WF_API void LogReporter(log_level level, std::string message, ...);
 
         #ifdef WF_RELEASE
             #define LOG_DEBUG_ENABLED 0
@@ -36,7 +34,7 @@ namespace weavefra
         #endif
         #if LOG_FATAL_ENABLED == 1
             #ifndef WF_FATAL_LOG
-                #define WF_FATAL(message, ...) LogReporter(log_level::LOG_FATAL_LEVEL, message, ##__VA_ARGS__)
+                #define WF_FATAL_LOG(message, ...) LogReporter(log_level::LOG_FATAL_LEVEL, message, ##__VA_ARGS__)
             #endif
         #else
             #define WF_FATA_LOG(message, ...)
@@ -77,4 +75,4 @@ namespace weavefra
             #define WF_TRACE_LOG(message, ...)
         #endif
     #endif
-}
+

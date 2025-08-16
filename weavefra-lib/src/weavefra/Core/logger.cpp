@@ -1,7 +1,7 @@
 #include "logger.h"
+#include "Asserts.h"
 
-namespace weavefra
-{
+
     std::uint8_t Initialize_logging()
     {
         // log file will been created
@@ -13,7 +13,7 @@ namespace weavefra
         // clean the stuff that need be clean
     }
 
-    WF_API void LogReporter(log_level level, const char* message, ...)
+    WF_API void LogReporter(log_level level, std::string message, ...)
     {
         const char * level_string[6] = { "[FATAL] :", "[ERROR] :", "[WORNING] :", "[INFO] :", "[DEBUG] :", "[TRACE] :" };
         uint8_t is_error = level < 2;
@@ -23,7 +23,7 @@ namespace weavefra
 
         va_list arg_ptr;
         va_start(arg_ptr, message);
-        std::vsnprintf(out_message, 32000, message, arg_ptr);
+        std::vsnprintf(out_message, 32000, message.c_str(), arg_ptr);
         va_end(arg_ptr);
 
         char F_out_message[32000];
@@ -34,5 +34,5 @@ namespace weavefra
         return WF_API void();
     }
 
-    
-} // namespace weavefra
+
+

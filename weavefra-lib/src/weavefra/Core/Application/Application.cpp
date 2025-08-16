@@ -1,15 +1,16 @@
 #include "Application.h"
 
+
 namespace weavefra
 {
+    Application::Application()
+    {
+        
+    }
+
     void Application::Run()
     {
-        while(!ShouldEnd)
-        {
-            if(std::cin.get())
-            {
-                ShouldEnd = true;
-            }
-        }
+
     }
+    
 }

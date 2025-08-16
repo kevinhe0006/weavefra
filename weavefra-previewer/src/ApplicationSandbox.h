@@ -9,12 +9,14 @@ namespace Sandbox
         SandboxApplicationEvent(bool isrun) : isRun(isrun){
         }
     };
+
     class sandboxApplication : public weavefra::Application
     {
     private:
         Sandbox::SandboxApplicationEvent m_SandboxSandboxApplicationEvent;
+        platform_state* m_state;
     public:
-        sandboxApplication() : m_SandboxSandboxApplicationEvent(false)
+        sandboxApplication() : m_SandboxSandboxApplicationEvent(false), m_state(Platform_Init())
         {
             weavefra::Main_EventBus.subscribe<SandboxApplicationEvent>([](SandboxApplicationEvent e){
                 if(e.isRun)
@@ -31,6 +33,7 @@ namespace Sandbox
         ~sandboxApplication()
         {
             weavefra::Main_EventBus.emit(m_SandboxSandboxApplicationEvent);
+            Platform_Shutdown(m_state);
         }
         void Run() override;
     };

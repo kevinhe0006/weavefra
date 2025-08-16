@@ -1,4 +1,4 @@
-project(weavefra-lib VERSION 1.0.0)
+project(weavefra-lib)
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
@@ -7,11 +7,6 @@ set(GLFW_INSTALL        OFF CACHE BOOL "" FORCE)
 
 file(GLOB_RECURSE LIB_SOURCES "src/*.cpp" "src/*.c" "src/*.h" "src/*.hpp")
 add_library(${PROJECT_NAME} ${LIB_SOURCES})
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    glfw
-    ${CMAKE_DL_LIBS}
-)
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC
     src/WFpch.h
@@ -41,6 +36,35 @@ message(STATUS "  WEAVEFRA_STATIC  = ${WEAVEFRA_STATIC}")
 target_compile_definitions(${PROJECT_NAME} PRIVATE 
     $<$<CONFIG:Debug>:LIB_DEBUG=1>
 )
+
+# Detect platform and set OS macros
+# ---- OS macros ----
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _OS_WINDOWS=1)
+elseif(ANDROID)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE _OS_UNIX=1 _OS_ANDROID=1)
+elseif(APPLE)
+  if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _OS_APPLE=1 _OS_IOS=1 _OS_UNIX=1)
+  else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _OS_APPLE=1 _OS_MACOS=1 _OS_UNIX=1)
+  endif()
+elseif(UNIX)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _OS_UNIX=1 _OS_LINUX=1)
+  else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _OS_UNIX=1)
+  endif()
+else()
+  target_compile_definitions(${PROJECT_NAME} PRIVATE _OS_UNKNOWN=1)
+endif()
+
+# ---- Arch width ----
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE _ARCH_64BIT=1)
+else()
+  target_compile_definitions(${PROJECT_NAME} PRIVATE _ARCH_32BIT=1)
+endif()
 
 install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION lib

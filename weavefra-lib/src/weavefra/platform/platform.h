@@ -5,9 +5,8 @@
 #include "WFpch.h"
 
 #include "weavefra/Core/CoreDefined.h"
-#include "weavefra/Core/EventBus/EventBus.h"
-#include "weavefra/Core/logger.h"
-#include "weavefra/Core/Asserts.h"
+#include "weavefra/Core/EventBus/EventType.h"
+
 
 #ifndef PLATFORM_H
 #define PLATFORM_H
@@ -71,14 +70,14 @@ typedef struct WindowDesc
         : width(w), height(h), title(t), resizable(r), visible(v){}
 } WF_API WindowDesc;
 
-struct WF_API InitOptions
+struct WF_API Platform_InitOptions
 {
     const char* app_name = "app";
     bool high_dpi_awareness = true;
     WindowDesc Window_Desc;
 };
 
-WF_API platform_state* Platform_Init(const InitOptions& = {});        /* Optional: Initialize the global subsystem */  
+WF_API platform_state* Platform_Init(const Platform_InitOptions& = {});        /* Optional: Initialize the global subsystem */  
 WF_API Platform_Error  Platform_Shutdown(platform_state *plat_state);    /* Release global resources */  
 
 typedef struct Platform_File_State
@@ -113,7 +112,13 @@ public:
     Platfrom_Console();
     ~Platfrom_Console();
 
-    void Platform_ConsoleWrite(std::string message, u8 r, u8 g, u8 b);
+    bool allocAConsole(bool attachParent = true);
+
+    bool consoleSet();
+
+    static void consoleWrite(const std::string& message,
+                             uint8_t r = 255, uint8_t g = 255, uint8_t b = 255,
+                             bool ensureNewline = true);
 };
 
 WF_API void* platform_allocate(u64, bool aligned);
@@ -267,13 +272,88 @@ public:
     void Show_Platform_Window(bool Should_activate = true) const;
 };
 
-class WF_API Platform_Thread;
+#define WF_OS_Thread 0
 
-class WF_API Platform_Mutex;
+#if (!WF_OS_Thread)
 
-class WF_API Platform_Semaphore;
+class WF_API Platform_Thread
+{
+private:
+    std::thread TH;
+public:
+    Platform_Thread() = default;
+    ~Platform_Thread()
+    {
+      if (TH.joinable()) TH.join();
+    }
 
-class WF_API Platform_CondVar;
+    Platform_Thread(const Platform_Thread&) = delete;
+    Platform_Thread& operator=(const Platform_Thread&) = delete;
+
+    Platform_Thread(Platform_Thread&& other) noexcept
+      : TH(std::move(other.TH)) {}
+
+    Platform_Thread& operator=(Platform_Thread&& other) noexcept
+    {
+      if (this != &other) {
+        if (TH.joinable()) TH.join();
+        TH = std::move(other.TH);
+      }
+      return *this;
+    }
+
+    template<class Fn, class... Args>
+    bool start(Fn&& fn, Args&&... args)
+    {
+      if (TH.joinable()) return false;
+      TH = std::thread(std::forward<Fn>(fn), std::forward<Args>(args)...);
+      return true;
+    }
+
+    void join()   { if (TH.joinable()) TH.join(); }
+    void detach() { if (TH.joinable()) TH.detach(); }
+
+    bool joinable() const noexcept { return TH.joinable(); }
+    std::thread::id id() const noexcept { return TH.get_id(); }
+
+    static void yield() noexcept { std::this_thread::yield(); }
+    template<class Rep, class Period>
+    static void sleep_for(const std::chrono::duration<Rep,Period>& d) { std::this_thread::sleep_for(d); }
+    static unsigned hardware_concurrency() noexcept { return std::thread::hardware_concurrency(); }
+};
+
+class WF_API Platform_Mutex
+{
+private:
+    std::mutex mutex;
+public:
+    void lock()   { mutex.lock(); }
+    void unlock() { mutex.unlock(); }
+    bool try_lock(){ return mutex.try_lock(); }
+};
+
+class WF_API Platform_Semaphore
+{
+private:
+    std::counting_semaphore<INT_MAX> semaphore;
+public:
+    explicit Platform_Semaphore(int initial) : semaphore(initial) {}
+    void acquire() { semaphore.acquire(); }
+    void release(int n=1) { semaphore.release(n); }
+};
+
+class WF_API Platform_CondVar
+{
+private:
+    std::condition_variable CV;
+public:
+    template<class Pred>
+    void wait(std::unique_lock<std::mutex>& lk, Pred pred){ CV.wait(lk, pred); }
+    void notify_one(){ CV.notify_one(); }
+    void notify_all(){ CV.notify_all(); }
+};
+
+#endif
 
 class WF_API Platform_Socket;
 
@@ -293,7 +373,47 @@ struct WF_API platform_state
     extern "C"
     {      
 #endif
-        //...
+
+
+#if defined(_WIN32)
+  #if defined(WF_BUILD_SHARED)
+    #define WF_API __declspec(dllexport)
+  #elif defined(WF_USE_SHARED)
+    #define WF_API __declspec(dllimport)
+  #else
+    #define WF_API
+  #endif
+  #define WF_CALL __cdecl
+#else
+  #define WF_API  __attribute__((visibility("default")))
+  #define WF_CALL
+#endif
+
+#define WF_ABI_VERSION_MAJOR 0
+#define WF_ABI_VERSION_MINOR 1
+#define WF_ABI_VERSION_PATCH 0
+
+
+typedef uint8_t   WF_u8;  typedef int8_t    WF_i8;
+typedef uint16_t  WF_u16; typedef int16_t   WF_i16;
+typedef uint32_t  WF_u32; typedef int32_t   WF_i32;
+typedef uint64_t  wf_u64; typedef int64_t   WF_i64;
+typedef WF_u8     WF_bool; /* 0/1 */
+
+typedef enum WF_error {
+  WF_OK = 0,
+  WF_ERR_UNKNOWN       = -1,
+  WF_ERR_INVALID_ARG   = -2,
+  WF_ERR_NOMEM         = -3,
+  WF_ERR_IO            = -4,
+  WF_ERR_NOT_FOUND     = -5,
+  WF_ERR_BUSY          = -6,
+  WF_ERR_TIMEOUT       = -7,
+  WF_ERR_WOULD_BLOCK   = -8,
+  WF_ERR_NOT_SUPPORTED = -9,
+  WF_ERR_DISCONNECTED  = -10,
+} WF_error;
+
 #ifdef __cplusplus
     }
 #endif

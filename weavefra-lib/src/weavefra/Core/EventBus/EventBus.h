@@ -4,17 +4,10 @@
 
 #include "weavefra/Core/CoreDefined.h"
 #include "weavefra/Core/logger.h"
-#include "weavefra/Core/Asserts.h"
 
+#include "weavefra/Core/EventBus/GlobalEventBus.h"
 namespace weavefra
 {
-
-    struct WF_API Event
-    {
-    };
-
-    template<typename EventT>
-    using EventCallbackFn = std::function<void(const EventT&)>;
 
     class WF_API EventBus
     {
@@ -43,9 +36,7 @@ namespace weavefra
     inline uint64_t EventBus::subscribe(EventCallbackFn<EventT> h)
     {
         auto wrapper = [h = std::move(h)](const Event& base){
-            #ifdef LIB_DEBUG
-            WF_ASSERT(typeid(base) == typeid(EventT), "this is not a Event type");
-            #endif
+            if(typeid(base) != typeid(EventT)) { WF_ERROR_LOG("this is not a Event type : %s : %d", __FILE__, __LINE__); }
             const auto& result = static_cast<const EventT&>(base);
             h(result);
         };
@@ -79,16 +70,11 @@ namespace weavefra
             [&HandleID](EventBus::handler HandleCopy){
                 return (HandleCopy.ID == HandleID);
             }));
-            WF_DEBUG_LOG("unsubscribe %s type of event [Event ID]: %d \n", typeid(EventT).name(), HandleID);
+            WF_DEBUG_LOG("unsubscribe %s type of event [Event ID]: %d \n", typeid(EventT).name(), static_cast<int>(HandleID));
         }
         else
         {
             WF_ERROR_LOG("fail unsubscribe \n no subscribe for %s type of event \n", typeid(EventT).name());
         }
     }
-
-#ifndef _Create_Main_EventBus
-        #define _Create_Main_EventBus
-        inline EventBus Main_EventBus;
-    #endif
 }

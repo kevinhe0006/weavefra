@@ -1,5 +1,6 @@
 #include "WFpch.h"
 #include "EventBus.h"
+#include "GlobalEventBus.h"
 
 namespace weavefra
 {

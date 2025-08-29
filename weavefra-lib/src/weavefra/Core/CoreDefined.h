@@ -1,6 +1,8 @@
 #pragma once
 #include "global_platform.h"
 
+
+
 #if PLATFORM_WINDOWS
     #if defined(WEAVEFRA_STATIC)
       #define WF_API

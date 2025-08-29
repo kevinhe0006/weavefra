@@ -18,7 +18,7 @@ namespace Sandbox
     public:
         sandboxApplication() : m_SandboxSandboxApplicationEvent(false), m_state(Platform_Init())
         {
-            weavefra::Main_EventBus.subscribe<SandboxApplicationEvent>([](SandboxApplicationEvent e){
+            weavefra::GlobalEventBus::subscribe<SandboxApplicationEvent>([](SandboxApplicationEvent e){
                 if(e.isRun)
                 {
                     std::cout<< "SandboxApplication is Run" << "\n";
@@ -28,11 +28,11 @@ namespace Sandbox
                     std::cout<< "SandboxApplication was not exist" << "\n";
                 }
             });
-            weavefra::Main_EventBus.emit(m_SandboxSandboxApplicationEvent);
+            weavefra::GlobalEventBus::emit(m_SandboxSandboxApplicationEvent);
         }
         ~sandboxApplication()
         {
-            weavefra::Main_EventBus.emit(m_SandboxSandboxApplicationEvent);
+            weavefra::GlobalEventBus::emit(m_SandboxSandboxApplicationEvent);
             Platform_Shutdown(m_state);
         }
         void Run() override;

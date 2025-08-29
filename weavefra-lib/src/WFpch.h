@@ -47,6 +47,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
+#include <cinttypes>
+#include <semaphore>
+#include <mutex>
+#include <shared_mutex>
+#include <queue>
 
 #if _OS_WINDOWS
 // Windows-specific

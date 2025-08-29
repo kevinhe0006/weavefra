@@ -4,6 +4,7 @@
 
 #include "CoreDefined.h"
 #include "logger.h"
+#include "weavefra/platform/platform.h"
 
 #define WF_ASSERTS_ENABLED
 

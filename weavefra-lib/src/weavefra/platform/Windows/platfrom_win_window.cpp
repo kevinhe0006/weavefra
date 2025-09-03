@@ -43,7 +43,8 @@
     	if(!RegisterClassExA(&m_windowclass)) { MessageBoxA(0, "Windows RegisterClass fail", "Error", MB_ICONEXCLAMATION | MB_OK); 
 			WF_ERROR_LOG("RegisterClassExA failed (class may already exist).");}
 
-		u32	window_style = WS_OVERLAPPEDWINDOW | WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+		u32	window_style = WS_OVERLAPPEDWINDOW | WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_OVERLAPPEDWINDOW 
+        | WS_VISIBLE | CS_DBLCLKS;
 		window_style |= WS_THICKFRAME;
 		window_style |= WS_MAXIMIZE;
 		window_style |= WS_MINIMIZE;
@@ -173,17 +174,20 @@
 	}
 
 
-    	enum : uint8_t {
-    MB_None   = 0,
-    MB_Left   = 1,
-    MB_Right  = 2,
-    MB_Middle = 3,
-    MB_X1     = 4,
-    MB_X2     = 5,
-};
+    enum class MB_BUTTON : u8
+    {
+        MB_None   = 0,
+        MB_Left   = 1,
+        MB_Right  = 2,
+        MB_Middle = 3,
+        MB_X1     = 4,
+        MB_X2     = 5,
+    };
 
 static bool   s_hasLastMouse = false;
 static int32_t s_lastX = 0, s_lastY = 0;
+
+enum class MB : int { Left, Right, Middle, X1, X2 };
 
 static inline void ToMathCoords(HWND hwnd, int cx, int cy, int& outX, int& outY, uint32_t* optW = nullptr, uint32_t* optH = nullptr)
 {
@@ -222,7 +226,7 @@ static inline void EmitMouseMove(HWND hwnd, int cx, int cy)
     }
     s_lastX = mx; s_lastY = my;
 
-    e.mouse.button = MB_None;
+    e.mouse.button = u8(MB_BUTTON::MB_None);
     e.mouse.down   = false;
     e.mouse.wheel  = 0.0f;
 
@@ -268,7 +272,7 @@ static inline void EmitWheel(HWND hwnd, int screenX, int screenY, float steps /*
     e.mouse.dy = s_hasLastMouse ? (my - s_lastY) : 0;
     s_hasLastMouse = true; s_lastX = mx; s_lastY = my;
 
-    e.mouse.button = MB_None;
+    e.mouse.button = u8(MB_BUTTON::MB_None);
     e.mouse.down   = false;
 
 	// Convention: Vertical scroll wheel steps > 0 means up, < 0 means down
@@ -303,11 +307,24 @@ static inline void EmitWindow(HWND hwnd, EventWindow::EventWindowType t)
     weavefra::GlobalEventBus::emit(e);
 }
 
+
+// -- todo: Customize the "draggable area" (client area simulating the title bar). This is just for reference. --
+// Return true if the point is in the custom title bar; can change this to an actual check.
+static bool InCustomCaptionArea(HWND hwnd, POINT ptClient)
+{
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    const int captionH = 32;// "Fake title bar" height
+    return ptClient.y >= 0 && ptClient.y < captionH && ptClient.x >= 0 && ptClient.x < (rc.right - rc.left);
+}
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
     // -------------------- Basics/Life Cycle --------------------
+    case WM_NCCREATE:
+        return TRUE;
+
     case WM_CREATE:
         // Window creation completed
         EmitWindow(hwnd, EventWindow::EventWindowType::Create);
@@ -323,11 +340,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // The window is destroyed and the message loop is exited
         PostQuitMessage(0);
         return 0;
+
+    case WM_SETFOCUS:
+        EmitWindow(hwnd, EventWindow::EventWindowType::FocusIn);
+        return 0;
+
+    case WM_ERASEBKGND:
+        //Returns nonzero if background erasing is complete
+        // todo : set background erasing
+        return 1;// todo : Full coverage drawing/double buffering
 	
     // -------------------- Window size/position/focus --------------------
     case WM_SIZE:
     {
         const UINT type = (UINT)wParam;
+        RECT* prc = reinterpret_cast<RECT*>(lParam);
         if (type == SIZE_MINIMIZED)
 		{
             EmitWindow(hwnd, EventWindow::EventWindowType::Minimize);
@@ -344,32 +371,52 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             // Maximize or other size changes
             EmitWindow(hwnd, EventWindow::EventWindowType::Resize);
         }
-        return 0;
+        return TRUE;
     }
     case WM_MOVE:
         // Position changes (will not change client size)
         EmitWindow(hwnd, EventWindow::EventWindowType::Move);
         return 0;
 
-    case WM_SETFOCUS:
-        EmitWindow(hwnd, EventWindow::EventWindowType::FocusIn);
-        return 0;
-
     case WM_KILLFOCUS:
         EmitWindow(hwnd, EventWindow::EventWindowType::FocusOut);
         return 0;
+
+    case WM_GETMINMAXINFO: {
+        auto mmi = reinterpret_cast<MINMAXINFO*>(lParam);
+        mmi->ptMinTrackSize = { 320, 240 };
+        return 0;
+    }
 
 	// -------------------- Keyboard --------------------
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
     {
-        const bool wasDown = (lParam & (1 << 30)) != 0; // Previous state = pressed -> then this is a repeat
-        EmitKey((uint32_t)wParam, true, wasDown);
-        return 0;
+        if(/* todo : System keys beed to intercept */ false)
+        {
+            const bool down   = (uMsg == WM_SYSKEYDOWN);
+            const UINT vk     = (UINT)wParam;
+            const bool wasDown= (lParam & (1 << 30)) != 0;
+            EmitKey(vk, down, wasDown);
+            return 0;
+        }
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
     case WM_KEYUP:
     case WM_SYSKEYUP:
-        EmitKey((uint32_t)wParam, false, false);
+    {
+        if(/* todo : System keys beed to intercept */false)
+        {
+            const bool down   = (uMsg == WM_SYSKEYDOWN);
+            const UINT vk     = (UINT)wParam;
+            const bool wasDown= (lParam & (1 << 30)) != 0;
+            EmitKey(vk, down, wasDown);
+            return 0;
+        }
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+    case WM_CHAR:
+        // todo : If there is text input logic, process characters here (different from VK_*)
         return 0;
 
 	// -------------------- Mouse (client area) --------------------
@@ -377,43 +424,64 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         EmitMouseMove(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         return 0;
 
-    case WM_LBUTTONDOWN: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Left,   true);  return 0;
-    case WM_LBUTTONUP:   EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Left,   false); return 0;
-    case WM_RBUTTONDOWN: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Right,  true);  return 0;
-    case WM_RBUTTONUP:   EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Right,  false); return 0;
-    case WM_MBUTTONDOWN: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Middle, true);  return 0;
-    case WM_MBUTTONUP:   EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Middle, false); return 0;
+    case WM_LBUTTONDOWN: 
+        SetCapture(hwnd); 
+        EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Left), true);
+        return 0;
+
+    case WM_LBUTTONUP:
+        if (GetCapture() == hwnd) ReleaseCapture();
+        EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Left), false);
+        return 0;
+
+    case WM_RBUTTONDOWN:
+        SetCapture(hwnd);
+        EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Right), true);
+        return 0;
+
+    case WM_RBUTTONUP:
+        if (GetCapture() == hwnd) ReleaseCapture();
+        EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Right), false);
+        return 0;
+
+    case WM_MBUTTONDOWN:
+        SetCapture(hwnd);
+        EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Middle), true); 
+        return 0;
+
+    case WM_MBUTTONUP: 
+        if (GetCapture() == hwnd) ReleaseCapture();
+        EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Middle), false); 
+        return 0;
 
 	// X button series returns TRUE
     case WM_XBUTTONDOWN:
+        SetCapture(hwnd);
         EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam),
-                        (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, true);
+                        (HIWORD(wParam) == XBUTTON1) ? u8(MB_BUTTON::MB_X1) : u8(MB_BUTTON::MB_X2), true);
         return TRUE; // X button series returns TRUE
     case WM_XBUTTONUP:
+        if (GetCapture() == hwnd) ReleaseCapture();
         EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam),
-                        (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, false);
+                        (HIWORD(wParam) == XBUTTON1) ? u8(MB_BUTTON::MB_X1) : u8(MB_BUTTON::MB_X2), false);
         return TRUE;
 
-    case WM_LBUTTONDBLCLK: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Left,   true);  return 0;
-    case WM_RBUTTONDBLCLK: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Right,  true);  return 0;
-    case WM_MBUTTONDBLCLK: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MB_Middle, true);  return 0;
+    case WM_LBUTTONDBLCLK: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Left),   true);  return 0;
+    case WM_RBUTTONDBLCLK: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Right),  true);  return 0;
+    case WM_MBUTTONDBLCLK: EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), u8(MB_BUTTON::MB_Middle), true);  return 0;
     case WM_XBUTTONDBLCLK:
         EmitMouseButton(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam),
-                        (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, true);
+                        (HIWORD(wParam) == XBUTTON1) ? u8(MB_BUTTON::MB_X1) : u8(MB_BUTTON::MB_X2), true);
         return TRUE;
 
     case WM_MOUSEWHEEL:
-    {
-        // delta>0: scroll wheel forward
-        const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        EmitWheel(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (float)delta / (float)WHEEL_DELTA, false);
-        return 0;
-    }
     case WM_MOUSEHWHEEL:
     {
-        // delta>0: right
-        const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        EmitWheel(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), (float)delta / (float)WHEEL_DELTA, true);
+        POINT pt{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; // screen
+        ScreenToClient(hwnd, &pt);
+        const int  delta = GET_WHEEL_DELTA_WPARAM(wParam);
+        const bool horizontal = (uMsg == WM_MOUSEHWHEEL);
+        EmitWheel(hwnd, pt.x, pt.y, (float)delta / (float)WHEEL_DELTA, horizontal);
         return 0;
     }
 
@@ -430,35 +498,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	
         switch (uMsg)
         {
-        case WM_NCMOUSEMOVE:    EmitMouseMove(hwnd, pt.x, pt.y); break;
-        case WM_NCLBUTTONDOWN:  EmitMouseButton(hwnd, pt.x, pt.y, MB_Left,   true);  break;
-        case WM_NCLBUTTONUP:    EmitMouseButton(hwnd, pt.x, pt.y, MB_Left,   false); break;
-        case WM_NCLBUTTONDBLCLK:EmitMouseButton(hwnd, pt.x, pt.y, MB_Left,   true);  break;
-		
-        case WM_NCRBUTTONDOWN:  EmitMouseButton(hwnd, pt.x, pt.y, MB_Right,  true);  break;
-        case WM_NCRBUTTONUP:    EmitMouseButton(hwnd, pt.x, pt.y, MB_Right,  false); break;
-        case WM_NCRBUTTONDBLCLK:EmitMouseButton(hwnd, pt.x, pt.y, MB_Right,  true);  break;
-		
-        case WM_NCMBUTTONDOWN:  EmitMouseButton(hwnd, pt.x, pt.y, MB_Middle, true);  break;
-        case WM_NCMBUTTONUP:    EmitMouseButton(hwnd, pt.x, pt.y, MB_Middle, false); break;
-        case WM_NCMBUTTONDBLCLK:EmitMouseButton(hwnd, pt.x, pt.y, MB_Middle, true);  break;
-		
+        case WM_NCMOUSEMOVE:case WM_NCLBUTTONDBLCLK:case WM_NCRBUTTONDBLCLK:
+        case WM_NCLBUTTONDOWN:case WM_NCRBUTTONDOWN:case WM_NCMBUTTONDOWN:  
+        case WM_NCLBUTTONUP:case WM_NCRBUTTONUP:case WM_NCMBUTTONUP:    
+        case WM_NCMBUTTONDBLCLK:
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
         case WM_NCXBUTTONDOWN:
-            EmitMouseButton(hwnd, pt.x, pt.y, (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, true);
-            return TRUE;
+            //todo
+            //EmitMouseButton(hwnd, pt.x, pt.y, (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, true);
+            //return TRUE;
         case WM_NCXBUTTONUP:
-            EmitMouseButton(hwnd, pt.x, pt.y, (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, false);
-            return TRUE;
+            //EmitMouseButton(hwnd, pt.x, pt.y, (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, false);
+            //return TRUE;
         case WM_NCXBUTTONDBLCLK:
-            EmitMouseButton(hwnd, pt.x, pt.y, (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, true);
-            return TRUE;
+            //EmitMouseButton(hwnd, pt.x, pt.y, (HIWORD(wParam) == XBUTTON1) ? MB_X1 : MB_X2, true);
+            //return TRUE;
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
-
     // -------------------- Others: default processing --------------------
     default:
-        break;
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);

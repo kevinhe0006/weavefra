@@ -14,13 +14,16 @@
 /* ======== Basic types ========================================================= */
 
 typedef uint8_t   u8;
-typedef int8_t    s8;
+typedef int8_t    i8;
 typedef uint16_t  u16;
-typedef int16_t   s16;
+typedef int16_t   i16;
 typedef uint32_t  u32;
-typedef int32_t   s32;
+typedef int32_t   i32;
 typedef uint64_t  u64;
-typedef int64_t   s64;
+typedef int64_t   i64;
+
+typedef u8        b8;
+typedef u32       b32;
 
 typedef uintptr_t uptr;
 typedef intptr_t  sptr;
@@ -65,7 +68,6 @@ typedef struct WindowDesc
     const char* title = "window";
     bool resizable = true;
     bool visible = true;
-    enum ContextType { OpenGL, Vulkan, Directx, Metal, GNMX, NVN};
     WindowDesc(u32 w = 1280, u32 h = 720, const char* t = "window", bool r = true, bool v = true)
         : width(w), height(h), title(t), resizable(r), visible(v){}
 } WF_API WindowDesc;
@@ -121,10 +123,11 @@ public:
                              bool ensureNewline = true);
 };
 
-WF_API void* platform_allocate(u64, bool aligned);
-WF_API void  platform_free(void* block, bool aligned);
+WF_API void* platform_allocate(u64 size, size_t aligned, b8 zero_init);
+WF_API void* platform_reallocate(void* ptr, u64 new_size, size_t alignment, b8 zero_init);
+WF_API void  platform_free(void* block, size_t aligned);
 WF_API void* platform_copy_memory(void *dest, const void* source, u64 size);
-WF_API void* platform_set_memory(void *dest, s32 value, u64 size); 
+WF_API void* platform_set_memory(void *dest, i32 value, u64 size); 
 
 class WF_API Platform_Clock
 {
@@ -213,22 +216,22 @@ public:
 
 struct WF_API EventKey
 {
-    uint32_t key;
+    u32 key;
     bool down;
     bool repeat;
 };
 struct WF_API EventMouse
 {
-    int32_t x, y;       
-    int32_t dx, dy;     
-    uint8_t button;     
+    i32 x, y;       
+    i32 dx, dy;     
+    u8 button;     
     bool down;
     float wheel;        
 };
 struct WF_API EventWindow
 {
     enum class EventWindowType { Create, Close, Resize, FocusIn, FocusOut, Move, Minimize, Restore } type;
-    uint32_t width, height;
+    u32 width, height;
 };
 enum class platform_EventType : uint8_t { None, Key, Mouse, Window, TextInput, DropFile };
 struct WF_API platform_Event : weavefra::Event
@@ -398,9 +401,10 @@ typedef uint8_t   WF_u8;  typedef int8_t    WF_i8;
 typedef uint16_t  WF_u16; typedef int16_t   WF_i16;
 typedef uint32_t  WF_u32; typedef int32_t   WF_i32;
 typedef uint64_t  wf_u64; typedef int64_t   WF_i64;
-typedef WF_u8     WF_bool; /* 0/1 */
+typedef WF_u8     WF_b8; /* 0/1 */
 
-typedef enum WF_error {
+typedef enum WF_error
+{
   WF_OK = 0,
   WF_ERR_UNKNOWN       = -1,
   WF_ERR_INVALID_ARG   = -2,

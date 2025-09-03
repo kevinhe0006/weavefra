@@ -52,6 +52,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <queue>
+#include <cstddef>
 
 #if _OS_WINDOWS
 // Windows-specific

@@ -25,7 +25,7 @@ namespace Sandbox
                 }
                 else
                 {
-                    std::cout<< "SandboxApplication was not exist" << "\n";
+                    std::cout<< "this SandboxApplication was not exist" << "\n";
                 }
             });
             weavefra::GlobalEventBus::emit(m_SandboxSandboxApplicationEvent);

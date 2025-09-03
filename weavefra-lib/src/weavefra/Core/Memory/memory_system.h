@@ -27,7 +27,7 @@ namespace weavefra
     size_t alignment = alignof(std::max_align_t),
     MemoryTag tag = MemoryTag::MemoryTag_Unknown)
     {
-        return WF_Allocate(Global_Memory_System::state, ptr, new_size, alignment, tag);
+        return WF_Allocate(Global_Memory_System::state, ptr, new_size, alignment, tag, MemoryFlags::WF_MEM_Default); // MemoryFlags set
     }
     WF_API bool WFS_Free(void* ptr, size_t size)
     {
